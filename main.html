@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.js"></script>
+  <script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const DEFAULT_BREAK_LENGTH = 5 * 60 * 1000;
+    const DEFAULT_SESSION_LENGTH = 25 * 60 * 1000;
+    const format = function (amount, isForTimer) {
+      let seconds = Math.floor(Math.floor(amount/1000) % (60));
+      let minutes = Math.floor(amount / (60 * 1000));
+      if(isForTimer) {
+        return ((minutes < 10) ? ("0") : "") + minutes + ":" + ((seconds < 10) ? ("0") : "") + seconds;
+      }
+      return minutes;
+    }
+
+    class Main extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = {
+          breakLength: DEFAULT_BREAK_LENGTH,
+          sessionLength: DEFAULT_SESSION_LENGTH,
+          focusOnSession: true,
+          countingDown: false,
+          timerController: null,
+          timeLeft: DEFAULT_SESSION_LENGTH
+        };
+        this.changeAmount = this.changeAmount.bind(this);
+        this.startOrStop = this.startOrStop.bind(this);
+        this.reset = this.reset.bind(this);
+        this.countDown = this.countDown.bind(this);
+      }
+
+      changeAmount(breakOrSessionLength, amount) {
+        if(!this.state.countingDown) {
+          let tempSum = this.state[breakOrSessionLength] + amount;
+          let tempState = {
+            breakLength: this.state.breakLength,
+            sessionLength: this.state.sessionLength,
+            focusOnSession: this.state.focusOnSession,
+            countingDown: this.state.countingDown,
+            timerController: this.state.timerController,
+            timeLeft: this.state.timeLeft
+          };
+          if ((tempSum > 0) && (tempSum <= 60 * 60 * 1000)) {
+            tempState[breakOrSessionLength] = tempSum;
+            tempState.timeLeft = tempState.sessionLength;
+            this.setState(tempState);
+          }
+        }
+      }
+
+      countDown() {
+        if(this.state.focusOnSession){
+          if(this.state.timeLeft === 0) {
+            document.getElementById("beep").play();
+            this.setState({
+              breakLength: this.state.breakLength,
+              sessionLength: this.state.sessionLength,
+              focusOnSession: false,
+              countingDown: this.state.countingDown,
+              timerController: this.state.timerController,
+              timeLeft: this.state.breakLength
+            });
+          } else {
+            this.setState({
+              breakLength: this.state.breakLength,
+              sessionLength: this.state.sessionLength,
+              focusOnSession: this.state.focusOnSession,
+              countingDown: this.state.countingDown,
+              timerController: this.state.timerController,
+              timeLeft: this.state.timeLeft - Math.floor(1 * 1000)
+            });
+          }
+        } else {
+          if(this.state.timeLeft === 0) {
+            document.getElementById("beep").play();
+            this.setState({
+              breakLength: this.state.breakLength,
+              sessionLength: this.state.sessionLength,
+              focusOnSession: true,
+              countingDown: this.state.countingDown,
+              timerController: this.state.timerController,
+              timeLeft: this.state.sessionLength
+            });
+          } else {
+            this.setState({
+              breakLength: this.state.breakLength,
+              sessionLength: this.state.sessionLength,
+              focusOnSession: this.state.focusOnSession,
+              countingDown: this.state.countingDown,
+              timerController: this.state.timerController,
+              timeLeft: this.state.timeLeft - Math.floor(1 * 1000)
+            });
+          }
+        }
+      }
+
+      startOrStop() {
+        //stop
+        if(this.state.countingDown) {
+          clearTimeout(this.state.timerController);
+          this.setState({
+            breakLength: this.state.breakLength,
+            sessionLength: this.state.sessionLength,
+            focusOnSession: this.state.focusOnSession,
+            countingDown: false,
+            timerController: null,
+            timeLeft: this.state.timeLeft
+          });
+          return;
+        }
+        //start
+        this.setState({
+          breakLength: this.state.breakLength,
+          sessionLength: this.state.sessionLength,
+          focusOnSession: this.state.focusOnSession,
+          countingDown: true,
+          timerController: window.setInterval(this.countDown, Math.floor(1 * 1000)),
+          timeLeft: this.state.timeLeft
+        });
+
+      }
+
+      reset() {
+        clearTimeout(this.state.timerController);
+        document.getElementById("beep").pause();
+        this.setState({
+          breakLength: DEFAULT_BREAK_LENGTH,
+          sessionLength: DEFAULT_SESSION_LENGTH,
+          focusOnSession: true,
+          countingDown: false,
+          timerController: null,
+          timeLeft: this.state.sessionLength
+        });
+      }
+
+      render() {
+        return(
+          <div>
+            <div id="break-length">{format(this.state.breakLength, false)}</div>
+            <div id="break-label">Break Length</div>
+            <button id="break-decrement" onClick={(e) => this.changeAmount("breakLength", -1 * 60 * 1000)}>-</button>
+            <button id="break-increment" onClick={(e) => this.changeAmount("breakLength", 1 * 60 * 1000)}>+</button>
+            <div id="session-length">{format(this.state.sessionLength, false)}</div>
+            <div id="session-label">Session Length</div>
+            <button id="session-decrement" onClick={(e) => this.changeAmount("sessionLength", -1 * 60 * 1000)}>-</button>
+            <button id="session-increment" onClick={(e) => this.changeAmount("sessionLength", 1 * 60 * 1000)}>+</button>
+            <div id="timer-label">{this.state.focusOnSession ? "Session" : "Break"}</div>
+            <div id="time-left">{format(this.state.timeLeft, true)}</div>
+            <button id="start_stop" onClick={this.startOrStop}>start/stop</button>
+            <button id="reset" onClick={this.reset}>reset</button>
+            <audio id="beep" src="http://soundbible.com/grab.php?id=2207&type=mp3"></audio>
+          </div>
+        );
+      }
+    }
+    ReactDOM.render(<Main />, document.getElementById("root"));
+  </script>
+</body>
+</html>
